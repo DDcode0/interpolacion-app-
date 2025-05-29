@@ -1,113 +1,102 @@
 import time
 import sympy as sp
 
-# Ejemplo para linear_interpolation
+
 def linear_interpolation(pts, x0=None):
-    x0_, y0_ = pts[0]
-    x1_, y1_ = pts[1]
-    # Cálculo
-    m = (y1_ - y0_) / (x1_ - x0_)
-    # Construir pasos
-    steps = []
-    steps.append("=== Interpolación Lineal ===")
-    steps.append(
-      f"Usamos los puntos: (x0 = {x0_}, f0 = {y0_}) y (x1 = {x1_}, f1 = {y1_})"
-    )
-    if x0 is not None:
-      steps.append(f"Queremos estimar la temperatura a x = {x0} horas")
-    steps.append("")
-    steps.append("Paso 1: Calcular la pendiente")
-    steps.append(
-      f"m = (f1 - f0) / (x1 - x0) = ({y1_} - {y0_}) / ({x1_} - {x0_}) = {y1_ - y0_} / {x1_ - x0_} = {m:.4f}"
-    )
-    steps.append("")
-    steps.append("Paso 2: Aplicar la fórmula")
-    if x0 is not None:
-      val = y0_ + m * (x0 - x0_)
-      steps.append(
-        f"f({x0}) ≈ f0 + m * (x - x0)\n     = {y0_} + {m:.4f} * ({x0} - {x0_})\n     = {y0_} + {m:.4f} = {val:.4f} °C"
-      )
-    # LaTeX del polinomio y valor
-    polyLaTeX = f"{m:.4f} x + {y0_ - m*x0_:.4f}"
-    return polyLaTeX, val if x0 is not None else None, {
-      "method": "linear",
-      "points": pts,
-      "steps": steps
+    x0 = float(x0)
+    x0 = round(x0, 4)
+    (x1, y1), (x2, y2) = pts
+    steps = [
+        "=== Interpolación Lineal ===",
+        f"Puntos: ({x1},{y1}), ({x2},{y2})",
+        f"Queremos f({x0})",
+        "\nPaso 1: Aplicar la fórmula de interpolación lineal:",
+        "f(x) = y1 + ((y2 - y1)/(x2 - x1)) * (x - x1)",
+        f"     = {y1} + (({y2} - {y1})/({x2} - {x1})) * ({x0} - {x1})"
+    ]
+    val = y1 + ((y2 - y1)/(x2 - x1)) * (x0 - x1)
+    steps.append(f"     = {val:.4f} ")
+    polyLaTeX = sp.latex(y1 + ((y2 - y1)/(x2 - x1)) * (sp.Symbol('x') - x1))
+
+    return polyLaTeX, val, {
+        "method": "linear",
+        "points": pts,
+        "steps": steps
     }
 
-
 def quadratic_interpolation(pts, x0=None):
-    x0_, y0_ = pts[0]
-    x1_, y1_ = pts[1]
-    x2_, y2_ = pts[2]
-
-    # diferencias
-    f01 = (y1_ - y0_) / (x1_ - x0_)
-    f12 = (y2_ - y1_) / (x2_ - x1_)
-    f012 = (f12 - f01) / (x2_ - x0_)
-
+    xs, ys = zip(*pts)
+    x = sp.Symbol('x')
     steps = [
-      "=== Interpolación Cuadrática de Newton ===",
-      "Puntos dados:",
-      f"x0 = {x0_}, f0 = {y0_}",
-      f"x1 = {x1_}, f1 = {y1_}",
-      f"x2 = {x2_}, f2 = {y2_}",
+        "=== Interpolación Cuadrática ===",
+        "Puntos: " + ", ".join(f"({x},{y})" for x,y in pts)
     ]
     if x0 is not None:
-      steps.append(f"x = {x0} horas")
-    steps += [
-      "",
-      "Paso 1: Calcular diferencias divididas",
-      f"f[x0,x1]   = ({y1_} - {y0_}) / ({x1_} - {x0_}) = {y1_ - y0_} / {x1_ - x0_} = {f01:.4f}",
-      f"f[x1,x2]   = ({y2_} - {y1_}) / ({x2_} - {x1_}) = {y2_ - y1_} / {x2_ - x1_} = {f12:.4f}",
-      f"f[x0,x1,x2] = ({f12:.4f} - {f01:.4f}) / ({x2_} - {x0_}) = {(f12 - f01):.4f} / {x2_ - x0_} = {f012:.4f}",
-      "",
-      "Paso 2: Construir el polinomio de Newton",
-      "P(x) = f0 + f[x0,x1]*(x - x0) + f[x0,x1,x2]*(x - x0)*(x - x1)",
-    ]
+        steps.append(f"Queremos f({x0})")
+
+    steps.append("\nPaso 1: Calcular coeficientes usando forma de Newton")
+    a0 = ys[0]
+    a1 = (ys[1] - ys[0]) / (xs[1] - xs[0])
+    a2 = (((ys[2] - ys[1]) / (xs[2] - xs[1])) - a1) / (xs[2] - xs[0])
+    steps.append(f"a0 = {a0}")
+    steps.append(f"a1 = ({ys[1]} - {ys[0]}) / ({xs[1]} - {xs[0]}) = {a1:.4f}")
+    steps.append(f"a2 = (({ys[2]} - {ys[1]}) / ({xs[2]} - {xs[1]}) - {a1:.4f}) / ({xs[2]} - {xs[0]}) = {a2:.4f}")
+
+    poly = a0 + a1*(x - xs[0]) + a2*(x - xs[0])*(x - xs[1])
+    polyLaTeX = sp.latex(sp.expand(poly))
+
     if x0 is not None:
-      val = y0_ + f01*(x0 - x0_) + f012*(x0 - x0_)*(x0 - x1_)
-      steps += [
-        "",
-        f"Evaluando en x = {x0}:",
-        f"P({x0}) = {y0_} + {f01:.4f}*({x0} - {x0_}) + {f012:.4f}*({x0} - {x0_})*({x0} - {x1_})",
-        f"     = {val:.4f} °C"
-      ]
-    polyLaTeX = "..."  # tu LaTeX aquí
-    return polyLaTeX, val if x0 is not None else None, {
-      "method":"quadratic",
-      "points": pts,
-      "steps":steps
+        val = float(poly.subs(x, x0))
+        steps.append("\nPaso 2: Evaluar el polinomio en x = {:.4f}".format(x0))
+        steps.append(f"f({x0}) = {val:.4f} °C")
+    else:
+        val = None
+
+    return polyLaTeX, val, {
+        "method": "quadratic",
+        "points": pts,
+        "steps": steps
     }
 
 def lagrange_interpolation(pts, x0=None):
     xs, ys = zip(*pts)
+    x = sp.Symbol('x')
     steps = [
-      "=== Interpolación de Lagrange ===",
-      "Puntos: " + ", ".join(f"({x},{y})" for x,y in pts),
+        "=== Interpolación de Lagrange ===",
+        "Puntos: " + ", ".join(f"({x},{y})" for x,y in pts)
     ]
     if x0 is not None:
-      steps.append(f"Queremos f({x0})")
-    steps += [
-      "",
-      "Paso 1: Aplicar la fórmula general",
-    ]
-    # cada Lk
-    for k in range(len(xs)):
-      numer = " * ".join(f"(x - {xs[j]})" for j in range(len(xs)) if j!=k)
-      denom = " * ".join(f"({xs[k]} - {xs[j]})" for j in range(len(xs)) if j!=k)
-      steps.append(f"L{k} = {ys[k]} * {numer} / {denom}")
-    if x0 is not None:
-      steps += [
-        "",
-        "Paso 2: Sumar términos",
-        "f({}) = ".format(x0) + " + ".join(f"{ys[k]} * L{k}" for k in range(len(xs))),
-        "= resultado"
-      ]
-    polyLaTeX="..."  # tu LaTeX
-    return polyLaTeX, val if x0 is not None else None, {
-      "method":"lagrange",
-      "points":pts,
-      "steps":steps
-    }
+        steps.append(f"Queremos f({x0})")
 
+    steps.append("\nPaso 1: Construir el polinomio de Lagrange")
+
+    n = len(xs)
+    L_terms = []
+    full_expr = 0
+
+    for i in range(n):
+        Li_expr = 1
+        Li_steps = [f"L{i}(x) = "]
+        for j in range(n):
+            if i != j:
+                Li_expr *= (x - xs[j]) / (xs[i] - xs[j])
+                Li_steps.append(f"(x - {xs[j]}) / ({xs[i]} - {xs[j]})")
+        Li_final = ys[i] * Li_expr
+        full_expr += Li_final
+        steps.append(" * ".join(Li_steps) + f" * {ys[i]}")
+        L_terms.append(Li_final)
+
+    polyLaTeX = sp.latex(sp.expand(full_expr))
+
+    if x0 is not None:
+        val = float(full_expr.subs(x, x0))
+        steps.append("\nPaso 2: Evaluar el polinomio en x = {:.4f}".format(x0))
+        steps.append(f"f({x0}) = {val:.4f} °C")
+    else:
+        val = None
+
+    return polyLaTeX, val, {
+        "method": "lagrange",
+        "points": pts,
+        "steps": steps
+    }
