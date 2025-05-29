@@ -1,8 +1,15 @@
 from flask import Flask, request, jsonify, abort
 from flask_cors import CORS
+import time
+
+from services.interpolation import (
+    linear_interpolation,
+    quadratic_interpolation,
+    lagrange_interpolation
+)
 
 app = Flask(__name__)
-CORS(app)  # permite cualquier origen
+CORS(app)
 
 @app.route('/ping')
 def ping():
@@ -11,28 +18,43 @@ def ping():
 @app.route('/interpolate', methods=['POST'])
 def interpolate_route():
     data = request.get_json()
-    if not data or 'points' not in data:
-        abort(400, description='Faltan puntos en la solicitud')
+    pts_raw = data.get('points')
+    method = data.get('method', 'linear')
+    x0 = data.get('xToEval', None)
 
-    raw = data['points']
-    pts = []
+    # Validaciones previas...
     try:
-        for p in raw:
-            x = float(p['x'])
-            y = float(p['y'])
-            pts.append((x, y))
-    except Exception:
-        abort(400, description='Todos los puntos deben tener x e y numéricos')
+        pts = [(float(p['x']), float(p['y'])) for p in pts_raw]
+    except:
+        abort(400, "Todos los puntos deben tener x e y numéricos")
 
-    xs = [x for x, _ in pts]
-    if len(xs) != len(set(xs)):
-        abort(400, description='No se permiten valores duplicados de x')
+    if len(set(x for x,_ in pts)) != len(pts):
+        abort(400, "No se permiten valores duplicados de x")
 
-    if len(pts) < 2:
-        abort(400, description='Se requieren al menos 2 puntos')
+    if method == 'linear' and len(pts) != 2:
+        abort(400, "Lineal: se requieren exactamente 2 puntos")
+    if method == 'quadratic' and len(pts) != 3:
+        abort(400, "Cuadrática: se requieren exactamente 3 puntos")
+    if method == 'lagrange' and len(pts) < 2:
+        abort(400, "Lagrange: se requieren al menos 2 puntos")
 
-    # Por ahora devolvemos eco de puntos
-    return jsonify(points=pts)
+    # Ejecutar método y obtener pasos
+    start = time.perf_counter()
+    if method=='linear':
+      poly, val, steps = linear_interpolation(pts, x0)
+    elif method=='quadratic':
+      poly, val, steps = quadratic_interpolation(pts, x0)
+    else:
+      poly, val, steps = lagrange_interpolation(pts, x0)
+    elapsed = time.perf_counter() - start
+
+    return jsonify({
+      'method': method,
+      'polynomialLaTeX': poly,
+      'value': val,
+      'time': elapsed,
+      'steps': steps
+    })
 
 if __name__ == '__main__':
     app.run(debug=True, port=5000)
