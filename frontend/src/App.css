@@ -1,8 +1,26 @@
+/* Estilo global adaptado a móviles */
+html,
+body,
 #root {
-  max-width: 1280px;
+  height: 100%;
+  width: 100%;
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+#root {
+  max-width: 100%;
   margin: 0 auto;
-  padding: 2rem;
+  padding: 1rem;
   text-align: center;
+  box-sizing: border-box;
+}
+
+input,
+select,
+textarea {
+  font-size: 16px; /* evita auto-zoom en móviles */
 }
 
 .logo {
@@ -39,4 +57,11 @@
 
 .read-the-docs {
   color: #888;
+}
+
+/* Responsive padding for small screens */
+@media (max-width: 600px) {
+  #root {
+    padding: 0.5rem;
+  }
 }
