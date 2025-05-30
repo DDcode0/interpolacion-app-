@@ -15,6 +15,10 @@ CORS(app)
 def ping():
     return jsonify(message='pong')
 
+@app.route("/")
+def home():
+    return "🚀 Backend Flask funcionando correctamente en Render!"
+
 @app.route('/interpolate', methods=['POST'])
 def interpolate_route():
     data = request.get_json()
