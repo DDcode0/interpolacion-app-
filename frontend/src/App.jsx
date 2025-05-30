@@ -3,17 +3,18 @@ import { BlockMath } from 'react-katex';
 import PointsInput from './components/PointsInput';
 import StepsAccordion from './components/StepsAccordion';
 import { ping, interpolate } from './services/api';
+import Chart from './components/Chart'; // <-- Agregado
 
 export default function App() {
   const [msg, setMsg] = useState('Cargando…');
   const [points, setPoints] = useState([]);
   const [method, setMethod] = useState('linear');
-  const [hoveredMethod, setHoveredMethod] = useState(null);      // <-- Nuevo estado
+  const [hoveredMethod, setHoveredMethod] = useState(null);
   const [xToEval, setXToEval] = useState('');
   const [result, setResult] = useState(null);
   const [error, setError] = useState('');
   const [resetSignal, setResetSignal] = useState(false);
-  
+
   useEffect(() => {
     ping()
       .then(res => setMsg(res.data.message))
@@ -45,7 +46,6 @@ export default function App() {
 
   const minPts = method === 'quadratic' ? 3 : 2;
 
-  // Descripciones para cada método
   const methodDescriptions = {
     linear:    'Lineal: requiere exactamente 2 puntos para estimaciones rápidas.',
     quadratic: 'Cuadrática: requiere exactamente 3 puntos para incorporar curvatura.',
@@ -54,25 +54,24 @@ export default function App() {
 
   return (
     <div className="min-h-screen bg-gray-900 text-white p-6 flex flex-col items-center">
-      <h1 className="text-5xl sm:text-6xl font-extrabold text-blue-400 mb-6">
-        App de Interpolación
-      </h1>
+<h1 class="text-5xl sm:text-6xl font-extrabold text-white drop-shadow-lg mb-6">
+    Interpolador Inteligente
+</h1>
+
       <p className="mb-8 text-lg sm:text-xl text-gray-300">
-        <strong>Backend dice:</strong> {msg}
+        
       </p>
 
       <div className="w-full max-w-3xl">
-        {/* 1. Tabla de puntos */}
         <PointsInput onChange={setPoints} resetSignal={resetSignal} />
 
-        {/* 2. Selector de método */}
         <div className="flex flex-wrap gap-4 mt-6 mb-1 justify-center">
           {['linear', 'quadratic', 'lagrange'].map(m => (
             <button
               key={m}
               onClick={() => setMethod(m)}
-              onMouseEnter={() => setHoveredMethod(m)}    // <-- Al pasar ratón
-              onMouseLeave={() => setHoveredMethod(null)} // <-- Al salir
+              onMouseEnter={() => setHoveredMethod(m)}
+              onMouseLeave={() => setHoveredMethod(null)}
               className={`px-4 py-2 rounded-xl font-bold transition text-lg ${
                 method === m
                   ? 'bg-blue-600 text-white'
@@ -84,14 +83,12 @@ export default function App() {
           ))}
         </div>
 
-        {/* Descripción dinámica */}
         {hoveredMethod && (
           <p className="text-center text-sm text-gray-300 italic mb-4">
             {methodDescriptions[hoveredMethod]}
           </p>
         )}
 
-        {/* 3. Campo para x0 */}
         <div className="mb-4">
           <label className="block text-sm mb-1 text-gray-300">
             Valor de x a evaluar (opcional):
@@ -105,7 +102,6 @@ export default function App() {
           />
         </div>
 
-        {/* 4. Botón calcular */}
         <button
           onClick={handleCalculate}
           disabled={points.length < minPts}
@@ -117,21 +113,18 @@ export default function App() {
         >
           Calcular
         </button>
-        
-        {/* 5. Botón limpiar */}
+
         <button
           onClick={handleReset}
           className="mt-3 w-full py-3 rounded-xl font-semibold transition bg-red-500 hover:bg-red-600 text-white text-lg sm:text-xl"
         >
           Limpiar campos
         </button>
-        
-        {/* 6. Error */}
+
         {error && (
           <div className="mt-4 text-red-400 font-medium text-lg">{error}</div>
         )}
 
-        {/* 7. Resultado */}
         {result && (
           <div className="mt-8 bg-gray-800 p-6 rounded-lg shadow-lg">
             <h2 className="text-2xl sm:text-3xl font-semibold mb-4">
@@ -156,13 +149,25 @@ export default function App() {
               Tiempo de cálculo: {result.time.toFixed(6)} segundos
             </p>
 
-            {/* 8. Pasos de resolución */}
             {result.steps && (
               <StepsAccordion
                 steps={result.steps}
                 polynomialLaTeX={result.polynomialLaTeX}
               />
             )}
+
+            {/* 9. Gráfica */}
+            {result.polynomialJs && (
+              <Chart
+                polynomialJs={result.polynomialJs}
+                points={points.map(p => ({ x: Number(p.x), y: Number(p.y) }))}
+              />
+            )}
+            <p className="mt-4 text-sm text-gray-400 text-center">
+              <span className="text-blue-400 font-semibold">Línea azul:</span> polinomio interpolante.&nbsp;
+              <span className="text-red-400 font-semibold">Puntos rojos:</span> datos ingresados.
+            </p>
+
           </div>
         )}
       </div>

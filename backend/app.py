@@ -42,27 +42,26 @@ def interpolate_route():
     if method == 'lagrange' and len(pts) < 2:
         abort(400, "Lagrange: se requieren al menos 2 puntos")
 
-    # Ejecutar método y obtener pasos
+    # Ejecutar método y obtener pasos + polynomialJs
     start = time.perf_counter()
-    if method=='linear':
-      poly, val, steps = linear_interpolation(pts, x0)
-    elif method=='quadratic':
-      poly, val, steps = quadratic_interpolation(pts, x0)
+    if method == 'linear':
+        poly, val, steps, polynomialJs = linear_interpolation(pts, x0)
+    elif method == 'quadratic':
+        poly, val, steps, polynomialJs = quadratic_interpolation(pts, x0)
     else:
-      poly, val, steps = lagrange_interpolation(pts, x0)
+        poly, val, steps, polynomialJs = lagrange_interpolation(pts, x0)
     elapsed = time.perf_counter() - start
 
     return jsonify({
-      'method': method,
-      'polynomialLaTeX': poly,
-      'value': val,
-      'time': elapsed,
-      'steps': steps
+        'method': method,
+        'polynomialLaTeX': poly,
+        'polynomialJs': polynomialJs,
+        'value': val,
+        'time': elapsed,
+        'steps': steps
     })
+
 if __name__ == "__main__":
     import os
     port = int(os.environ.get("PORT", 5000))
     app.run(host="0.0.0.0", port=port)
-
-# if __name__ == '__main__':
-#     app.run(debug=True, port=5000)
