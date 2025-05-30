@@ -8,6 +8,7 @@ export default function App() {
   const [msg, setMsg] = useState('Cargando…');
   const [points, setPoints] = useState([]);
   const [method, setMethod] = useState('linear');
+  const [hoveredMethod, setHoveredMethod] = useState(null);      // <-- Nuevo estado
   const [xToEval, setXToEval] = useState('');
   const [result, setResult] = useState(null);
   const [error, setError] = useState('');
@@ -35,14 +36,21 @@ export default function App() {
   };
 
   const handleReset = () => {
-    setResetSignal(prev => !prev); // Cambia el valor booleano
+    setResetSignal(prev => !prev);
     setXToEval('');
     setResult(null);
     setError('');
-    setPoints([]); // Opcional: también puedes reiniciar manualmente los puntos
+    setPoints([]);
   };
 
   const minPts = method === 'quadratic' ? 3 : 2;
+
+  // Descripciones para cada método
+  const methodDescriptions = {
+    linear:    'Lineal: requiere exactamente 2 puntos para estimaciones rápidas.',
+    quadratic: 'Cuadrática: requiere exactamente 3 puntos para incorporar curvatura.',
+    lagrange:  'Lagrange: requiere ≥2 puntos; ojo con oscilaciones para muchos puntos.'
+  };
 
   return (
     <div className="min-h-screen bg-gray-900 text-white p-6 flex flex-col items-center">
@@ -58,11 +66,13 @@ export default function App() {
         <PointsInput onChange={setPoints} resetSignal={resetSignal} />
 
         {/* 2. Selector de método */}
-        <div className="flex flex-wrap gap-4 mt-6 mb-4 justify-center">
+        <div className="flex flex-wrap gap-4 mt-6 mb-1 justify-center">
           {['linear', 'quadratic', 'lagrange'].map(m => (
             <button
               key={m}
               onClick={() => setMethod(m)}
+              onMouseEnter={() => setHoveredMethod(m)}    // <-- Al pasar ratón
+              onMouseLeave={() => setHoveredMethod(null)} // <-- Al salir
               className={`px-4 py-2 rounded-xl font-bold transition text-lg ${
                 method === m
                   ? 'bg-blue-600 text-white'
@@ -73,6 +83,13 @@ export default function App() {
             </button>
           ))}
         </div>
+
+        {/* Descripción dinámica */}
+        {hoveredMethod && (
+          <p className="text-center text-sm text-gray-300 italic mb-4">
+            {methodDescriptions[hoveredMethod]}
+          </p>
+        )}
 
         {/* 3. Campo para x0 */}
         <div className="mb-4">

@@ -1,102 +1,105 @@
 import time
 import sympy as sp
 
+class InterpolationError(Exception):
+    pass
+
+def validate_pts(pts, required):
+    if not isinstance(pts, list) or any(len(p) != 2 for p in pts):
+        raise InterpolationError("Los puntos deben ser lista de tuplas (x,y).")
+    xs = [p[0] for p in pts]
+    if len(set(xs)) != len(xs):
+        raise InterpolationError("No se permiten valores duplicados de x.")
+    if required is not None and len(pts) != required:
+        raise InterpolationError(f"Se requieren exactamente {required} puntos para este método.")
 
 def linear_interpolation(pts, x0=None):
-    x0 = float(x0)
-    x0 = round(x0, 4)
-    (x1, y1), (x2, y2) = pts
+    validate_pts(pts, 2)
+    x1, y1 = map(float, pts[0])
+    x2, y2 = map(float, pts[1])
+    # Polinomio
+    x = sp.Symbol('x')
+    m = (y2 - y1) / (x2 - x1)
+    b = y1 - m * x1
+    P = m*x + b
+    polyLaTeX = sp.latex(sp.simplify(P))
+    # Pasos
     steps = [
         "=== Interpolación Lineal ===",
         f"Puntos: ({x1},{y1}), ({x2},{y2})",
-        f"Queremos f({x0})",
-        "\nPaso 1: Aplicar la fórmula de interpolación lineal:",
-        "f(x) = y1 + ((y2 - y1)/(x2 - x1)) * (x - x1)",
-        f"     = {y1} + (({y2} - {y1})/({x2} - {x1})) * ({x0} - {x1})"
+        "Formamos P(x) = m·x + b con m=(y2-y1)/(x2-x1) y b=y1-m·x1",
+        f"m = ({y2} - {y1})/({x2} - {x1}) = {m:.4f}",
+        f"b = {y1} - ({m:.4f})·{x1} = {b:.4f}",
+        f"P(x) = {m:.4f}·x + {b:.4f}"  
     ]
-    val = y1 + ((y2 - y1)/(x2 - x1)) * (x0 - x1)
-    steps.append(f"     = {val:.4f} ")
-    polyLaTeX = sp.latex(y1 + ((y2 - y1)/(x2 - x1)) * (sp.Symbol('x') - x1))
-
-    return polyLaTeX, val, {
-        "method": "linear",
-        "points": pts,
-        "steps": steps
-    }
+    val = None
+    if x0 is not None:
+        x0f = float(x0)
+        val = float(P.subs(x, x0f))
+        steps += [
+            f"\nEvaluación en x = {x0f}:",
+            f"P({x0f}) = {m:.4f}·({x0f}) + {b:.4f} = {val:.4f}"
+        ]
+    return polyLaTeX, val, {"method": "linear", "points": pts, "steps": steps}
 
 def quadratic_interpolation(pts, x0=None):
-    xs, ys = zip(*pts)
+    validate_pts(pts, 3)
+    xs = [float(p[0]) for p in pts]
+    ys = [float(p[1]) for p in pts]
     x = sp.Symbol('x')
-    steps = [
-        "=== Interpolación Cuadrática ===",
-        "Puntos: " + ", ".join(f"({x},{y})" for x,y in pts)
-    ]
-    if x0 is not None:
-        steps.append(f"Queremos f({x0})")
-
-    steps.append("\nPaso 1: Calcular coeficientes usando forma de Newton")
+    # Coeficientes de Newton
     a0 = ys[0]
-    a1 = (ys[1] - ys[0]) / (xs[1] - xs[0])
-    a2 = (((ys[2] - ys[1]) / (xs[2] - xs[1])) - a1) / (xs[2] - xs[0])
-    steps.append(f"a0 = {a0}")
-    steps.append(f"a1 = ({ys[1]} - {ys[0]}) / ({xs[1]} - {xs[0]}) = {a1:.4f}")
-    steps.append(f"a2 = (({ys[2]} - {ys[1]}) / ({xs[2]} - {xs[1]}) - {a1:.4f}) / ({xs[2]} - {xs[0]}) = {a2:.4f}")
-
-    poly = a0 + a1*(x - xs[0]) + a2*(x - xs[0])*(x - xs[1])
-    polyLaTeX = sp.latex(sp.expand(poly))
-
+    a1 = (ys[1] - ys[0])/(xs[1] - xs[0])
+    a2 = (((ys[2] - ys[1])/(xs[2] - xs[1])) - a1)/(xs[2] - xs[0])
+    P = a0 + a1*(x - xs[0]) + a2*(x - xs[0])*(x - xs[1])
+    polyLaTeX = sp.latex(sp.simplify(P))
+    steps = [
+        "=== Interpolación Cuadrática de Newton ===",
+        "Puntos: " + ", ".join(f"({xs[i]},{ys[i]})" for i in range(3)),
+        "Formamos diferencias divididas:",
+        f"a0 = {ys[0]}",
+        f"a1 = ({ys[1]} - {ys[0]})/({xs[1]} - {xs[0]}) = {a1:.4f}",
+        f"a2 = ((({ys[2]} - {ys[1]})/({xs[2]} - {xs[1]})) - {a1:.4f})/({xs[2]} - {xs[0]}) = {a2:.4f}",
+        f"P(x) = {a0:.4f} + {a1:.4f}(x - {xs[0]}) + {a2:.4f}(x - {xs[0]})(x - {xs[1]})"
+    ]
+    val = None
     if x0 is not None:
-        val = float(poly.subs(x, x0))
-        steps.append("\nPaso 2: Evaluar el polinomio en x = {:.4f}".format(x0))
-        steps.append(f"f({x0}) = {val:.4f} °C")
-    else:
-        val = None
-
-    return polyLaTeX, val, {
-        "method": "quadratic",
-        "points": pts,
-        "steps": steps
-    }
+        x0f = float(x0)
+        val = float(P.subs(x, x0f))
+        steps += [
+            f"\nEvaluación en x = {x0f}:",
+            f"P({x0f}) = {val:.4f}"
+        ]
+    return polyLaTeX, val, {"method": "quadratic", "points": pts, "steps": steps}
 
 def lagrange_interpolation(pts, x0=None):
-    xs, ys = zip(*pts)
+    validate_pts(pts, None)
+    xs = [float(p[0]) for p in pts]
+    ys = [float(p[1]) for p in pts]
     x = sp.Symbol('x')
+    L = 0
     steps = [
         "=== Interpolación de Lagrange ===",
-        "Puntos: " + ", ".join(f"({x},{y})" for x,y in pts)
+        "Puntos: " + ", ".join(f"({xs[i]},{ys[i]})" for i in range(len(xs)))
     ]
-    if x0 is not None:
-        steps.append(f"Queremos f({x0})")
-
-    steps.append("\nPaso 1: Construir el polinomio de Lagrange")
-
-    n = len(xs)
-    L_terms = []
-    full_expr = 0
-
-    for i in range(n):
-        Li_expr = 1
-        Li_steps = [f"L{i}(x) = "]
-        for j in range(n):
+    steps.append("Construimos cada Lᵢ(x):")
+    for i in range(len(xs)):
+        term = ys[i]
+        expr = 1
+        parts = []
+        for j in range(len(xs)):
             if i != j:
-                Li_expr *= (x - xs[j]) / (xs[i] - xs[j])
-                Li_steps.append(f"(x - {xs[j]}) / ({xs[i]} - {xs[j]})")
-        Li_final = ys[i] * Li_expr
-        full_expr += Li_final
-        steps.append(" * ".join(Li_steps) + f" * {ys[i]}")
-        L_terms.append(Li_final)
-
-    polyLaTeX = sp.latex(sp.expand(full_expr))
-
+                expr *= (x - xs[j])/(xs[i] - xs[j])
+                parts.append(f"(x - {xs[j]})/({xs[i]} - {xs[j]})")
+        steps.append(f"L{i}(x) = {' · '.join(parts)} · {ys[i]}")
+        L += term*expr
+    polyLaTeX = sp.latex(sp.simplify(L))
+    val = None
     if x0 is not None:
-        val = float(full_expr.subs(x, x0))
-        steps.append("\nPaso 2: Evaluar el polinomio en x = {:.4f}".format(x0))
-        steps.append(f"f({x0}) = {val:.4f} °C")
-    else:
-        val = None
-
-    return polyLaTeX, val, {
-        "method": "lagrange",
-        "points": pts,
-        "steps": steps
-    }
+        x0f = float(x0)
+        val = float(L.subs(x, x0f))
+        steps += [
+            f"\nEvaluación en x = {x0f}:",
+            f"f({x0f}) = {val:.4f}"
+        ]
+    return polyLaTeX, val, {"method": "lagrange", "points": pts, "steps": steps}
